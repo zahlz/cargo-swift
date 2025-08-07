@@ -1,6 +1,6 @@
 use core::fmt;
 
-use console::Style;
+use dialoguer::console::Style;
 use dialoguer::theme::{ColorfulTheme, Theme};
 
 pub fn prompt_theme() -> impl Theme {
