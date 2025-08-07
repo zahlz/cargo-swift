@@ -2,8 +2,6 @@ use std::fmt::Display;
 use std::io::{self, stderr, Write};
 use std::ops::Deref;
 
-use itertools::Itertools;
-
 #[derive(Debug)]
 enum ErrorMessage {
     Simple(String),
@@ -94,9 +92,12 @@ impl From<Errors> for Result<()> {
             let message = ErrorMessage::Stderr(
                 value
                     .into_iter()
-                    .map(|e| e.message)
-                    .map(ErrorMessage::into_bytes)
-                    .concat(),
+                    .map(|e| e.message.into_bytes())
+                    .reduce(|mut a, mut b| {
+                        a.append(&mut b);
+                        a
+                    })
+                    .unwrap_or_default(),
             );
 
             Err(Error { message })
