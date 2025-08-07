@@ -46,7 +46,12 @@ impl Display for Mode {
 }
 
 impl Target {
-    fn cargo_build_commands(&self, mode: Mode, features: &FeatureOptions) -> Vec<Command> {
+    fn cargo_build_commands(
+        &self,
+        mode: Mode,
+        features: &FeatureOptions,
+        package: Option<&str>,
+    ) -> Vec<Command> {
         self.architectures()
             .into_iter()
             .map(|arch| {
@@ -73,6 +78,10 @@ impl Target {
                 }
                 if features.no_default_features {
                     cmd.arg("--no-default-features");
+                }
+
+                if let Some(package) = package {
+                    cmd.arg("--package").arg(package);
                 }
 
                 cmd
@@ -129,8 +138,9 @@ impl Target {
         mode: Mode,
         lib_type: LibType,
         features: &FeatureOptions,
+        package: Option<&str>,
     ) -> Vec<Command> {
-        self.cargo_build_commands(mode, features)
+        self.cargo_build_commands(mode, features, package)
             .into_iter()
             .chain(self.lipo_commands(lib_name, mode, lib_type))
             .chain(self.rpath_install_id_commands(lib_name, mode, lib_type))
