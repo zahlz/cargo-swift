@@ -57,6 +57,7 @@ pub struct FeatureOptions {
 
 #[allow(clippy::too_many_arguments)]
 pub fn run(
+    package: Option<String>,
     platforms: Option<Vec<Platform>>,
     build_target: Option<&str>,
     package_name: Option<String>,
@@ -68,11 +69,17 @@ pub fn run(
     features: FeatureOptions,
     skip_toolchains_check: bool,
 ) -> Result<()> {
-    // TODO: Allow path as optional argument to take other directories than current directory
-    // let crates = metadata().uniffi_crates();
-    let crates = [metadata()
-        .current_crate()
-        .ok_or("Current directory is not part of a crate!")?];
+    let md = metadata();
+    let crates = if let Some(package) = package {
+        md.packages
+            .iter()
+            .filter(|p| p.name == package)
+            .collect::<Vec<&Package>>()
+    } else {
+        vec![md
+            .current_crate()
+            .ok_or("Current directory is not part of a crate!")?]
+    };
 
     if crates.len() == 1 {
         return run_for_crate(
@@ -213,7 +220,15 @@ fn run_for_crate(
 
     let crate_name = lib.name.replace('-', "_");
     for target in &targets {
-        build_with_output(target, &crate_name, mode, lib_type, config, &features)?;
+        build_with_output(
+            target,
+            &crate_name,
+            mode,
+            lib_type,
+            config,
+            &features,
+            Some(&current_crate.name),
+        )?;
     }
 
     generate_bindings_with_output(&targets, &crate_name, mode, lib_type, config)?;
@@ -541,8 +556,9 @@ fn build_with_output(
     lib_type: LibType,
     config: &Config,
     features: &FeatureOptions,
+    package: Option<&str>,
 ) -> Result<()> {
-    let mut commands = target.commands(lib_name, mode, lib_type, features);
+    let mut commands = target.commands(lib_name, mode, lib_type, features, package);
     for command in &mut commands {
         command.env("CARGO_TERM_COLOR", "always");
     }

@@ -69,7 +69,7 @@ enum Action {
 
         #[arg(long = "macro")]
         // (Deprecated) This flag is no longer neccessary, as this is the default mode. This flag
-        // is ignored now and will be removed in future releases 
+        // is ignored now and will be removed in future releases
         // Initialize the project as a macro-only crate without .udl files
         macro_only: bool,
     },
@@ -78,6 +78,10 @@ enum Action {
     /// Package Rust crate in current directory as Swift package
     ///
     Package {
+        #[arg(long)]
+        /// Package to build (see `cargo help pkgid`)
+        package: Option<String>,
+
         #[arg(short, long, trailing_var_arg = true, num_args = 1..=4, ignore_case = true)]
         platforms: Option<Vec<package::Platform>>,
 
@@ -129,10 +133,11 @@ fn main() -> ExitCode {
             lib_type,
             plain,
             macro_only: _,
-            udl
+            udl,
         } => init::run(crate_name, config, vcs, lib_type, plain, !udl),
 
         Action::Package {
+            package,
             platforms,
             target,
             package_name,
@@ -145,6 +150,7 @@ fn main() -> ExitCode {
             all_features,
             no_default_features,
         } => package::run(
+            package,
             platforms,
             target.as_deref(),
             package_name,
