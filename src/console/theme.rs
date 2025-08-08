@@ -104,7 +104,7 @@ impl<T: Theme> Theme for PromptTheme<T> {
         self.format_prompt(f, prompt)
     }
 
-    /// Formats a multi_select prompt after selection.
+    /// Formats a multi select prompt after selection.
     fn format_multi_select_prompt_selection(
         &self,
         f: &mut dyn fmt::Write,

@@ -2,30 +2,29 @@ use std::borrow::Cow;
 
 use camino::Utf8Path;
 use cargo_metadata::{Metadata, MetadataCommand, Package};
-use lazy_static::lazy_static;
 
 use crate::path::PathExt;
 
 pub(crate) fn metadata() -> &'static Metadata {
-    lazy_static! {
-        static ref METADATA: Metadata = MetadataCommand::new()
+    static METADATA: std::sync::LazyLock<Metadata> = std::sync::LazyLock::new(|| {
+        MetadataCommand::new()
             .no_deps()
             .other_options(["--offline".to_string()])
             .exec()
             // TODO: Error handling
-            .unwrap();
-    }
+            .unwrap()
+    });
 
     &METADATA
 }
 
 pub(crate) trait MetadataExt {
-    fn target_dir(&self) -> Cow<Utf8Path>;
+    fn target_dir(&self) -> Cow<'_, Utf8Path>;
     fn current_crate(&self) -> Option<&Package>;
 }
 
 impl MetadataExt for Metadata {
-    fn target_dir(&self) -> Cow<Utf8Path> {
+    fn target_dir(&self) -> Cow<'_, Utf8Path> {
         let target_dir = self.target_directory.as_path();
         let relative = target_dir.to_relative();
 

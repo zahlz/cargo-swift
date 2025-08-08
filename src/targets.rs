@@ -11,7 +11,7 @@ pub trait TargetInfo {
     fn target(&self) -> Target;
     /// Marks whether a pre-built std-lib is provided for this target (Tier 1 and Tier 2) via rustup or target needs to
     /// be build (Tier 3)
-    /// See: https://doc.rust-lang.org/nightly/rustc/platform-support.html
+    /// See: `https://doc.rust-lang.org/nightly/rustc/platform-support.html`
     fn is_tier_3(&self) -> bool;
 }
 
@@ -132,6 +132,7 @@ impl Target {
     ///
     /// This function returns a list of commands that should be executed in their given
     /// order to build this target (and bundle architecture targets with lipo if it is a universal target).
+    #[must_use]
     pub fn commands(
         &self,
         lib_name: &str,
@@ -151,6 +152,7 @@ impl Target {
     ///
     /// If this target is a single target, the returned vector will always contain exactly one element.
     /// The names returned here exactly match the identifiers of the respective official Rust targets.
+    #[must_use]
     pub fn architectures(&self) -> NonEmpty<&'static str> {
         match self {
             Target::Single { architecture, .. } => nonempty![architecture],
@@ -158,20 +160,23 @@ impl Target {
         }
     }
 
+    #[must_use]
     pub fn display_name(&self) -> &'static str {
         match self {
-            Target::Single { display_name, .. } => display_name,
-            Target::Universal { display_name, .. } => display_name,
+            Target::Single { display_name, .. } | Target::Universal { display_name, .. } => {
+                display_name
+            }
         }
     }
 
+    #[must_use]
     pub fn platform(&self) -> ApplePlatform {
         match self {
-            Target::Single { platform, .. } => *platform,
-            Target::Universal { platform, .. } => *platform,
+            Target::Single { platform, .. } | Target::Universal { platform, .. } => *platform,
         }
     }
 
+    #[must_use]
     pub fn library_directory(&self, mode: Mode) -> String {
         let mode = match mode {
             Mode::Debug => "debug",
@@ -186,6 +191,7 @@ impl Target {
         }
     }
 
+    #[must_use]
     pub fn library_path(&self, lib_name: &str, mode: Mode, lib_type: LibType) -> String {
         format!(
             "{}/{}",
@@ -195,8 +201,9 @@ impl Target {
     }
 }
 
+#[must_use]
 pub fn library_file_name(lib_name: &str, lib_type: LibType) -> String {
-    format!("lib{}.{}", lib_name, lib_type.file_extension())
+    format!("lib{lib_name}.{}", lib_type.file_extension())
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -215,37 +222,36 @@ pub enum ApplePlatform {
 
 impl TargetInfo for ApplePlatform {
     fn target(&self) -> Target {
-        use ApplePlatform::*;
         match self {
-            IOS => Target::Single {
+            Self::IOS => Target::Single {
                 architecture: "aarch64-apple-ios",
                 display_name: "iOS",
                 platform: *self,
             },
-            IOSSimulator => Target::Universal {
+            Self::IOSSimulator => Target::Universal {
                 universal_name: "universal-ios",
                 architectures: nonempty!["x86_64-apple-ios", "aarch64-apple-ios-sim"],
                 display_name: "iOS Simulator",
                 platform: *self,
             },
-            MacOS => Target::Universal {
+            Self::MacOS => Target::Universal {
                 universal_name: "universal-macos",
                 architectures: nonempty!["x86_64-apple-darwin", "aarch64-apple-darwin"],
                 display_name: "macOS",
                 platform: *self,
             },
-            TvOS => Target::Single {
+            Self::TvOS => Target::Single {
                 architecture: "aarch64-apple-tvos",
                 display_name: "tvOS",
                 platform: *self,
             },
-            TvOSSimulator => Target::Universal {
+            Self::TvOSSimulator => Target::Universal {
                 universal_name: "universal-tvos-simulator",
                 architectures: nonempty!["aarch64-apple-tvos-sim", "x86_64-apple-tvos"],
                 display_name: "tvOS Simulator",
                 platform: *self,
             },
-            WatchOS => Target::Universal {
+            Self::WatchOS => Target::Universal {
                 universal_name: "universal-watchos",
                 architectures: nonempty![
                     "aarch64-apple-watchos",
@@ -255,18 +261,18 @@ impl TargetInfo for ApplePlatform {
                 display_name: "watchOS",
                 platform: *self,
             },
-            WatchOSSimulator => Target::Universal {
+            Self::WatchOSSimulator => Target::Universal {
                 universal_name: "universal-watchos-sim",
                 architectures: nonempty!["aarch64-apple-watchos-sim", "x86_64-apple-watchos-sim"],
                 display_name: "watchOS Simulator",
                 platform: *self,
             },
-            VisionOS => Target::Single {
+            Self::VisionOS => Target::Single {
                 architecture: "aarch64-apple-visionos",
                 display_name: "visionOS",
                 platform: *self,
             },
-            VisionOSSimulator => Target::Single {
+            Self::VisionOSSimulator => Target::Single {
                 architecture: "aarch64-apple-visionos-sim",
                 display_name: "visionOS Simulator",
                 platform: *self,
@@ -276,11 +282,13 @@ impl TargetInfo for ApplePlatform {
 
     fn is_tier_3(&self) -> bool {
         match self {
-            ApplePlatform::IOS | ApplePlatform::IOSSimulator => false,
-            ApplePlatform::MacOS => false,
-            ApplePlatform::TvOS | ApplePlatform::TvOSSimulator => true,
-            ApplePlatform::WatchOS | ApplePlatform::WatchOSSimulator => true,
-            ApplePlatform::VisionOS | ApplePlatform::VisionOSSimulator => true,
+            Self::IOS | Self::IOSSimulator | Self::MacOS => false,
+            Self::TvOS
+            | Self::TvOSSimulator
+            | Self::WatchOS
+            | Self::WatchOSSimulator
+            | Self::VisionOS
+            | Self::VisionOSSimulator => true,
         }
     }
 }

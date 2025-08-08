@@ -9,7 +9,7 @@ use uniffi_bindgen::{bindings::SwiftBindingGenerator, cargo_metadata::CrateConfi
 
 use crate::recreate_dir;
 
-/// Generates UniFFI bindings for crate and returns the .udl namespace
+/// Generates `UniFFI` bindings for crate and returns the .udl namespace
 pub fn generate_bindings(lib_path: &Utf8Path) -> Result<()> {
     let out_dir = Utf8Path::new("./generated");
     let headers = out_dir.join("headers");
