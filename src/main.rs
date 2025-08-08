@@ -1,9 +1,8 @@
 use std::process::ExitCode;
 
 use cargo_swift::{
-    init,
+    Config, LibType, Mode, init,
     package::{self, FeatureOptions},
-    Config, LibType, Mode,
 };
 use clap::{Parser, Subcommand};
 
