@@ -124,7 +124,7 @@ enum Action {
 
 fn main() -> ExitCode {
     let Cargo::Swift(args) = Cargo::parse();
-    let config = args.clone().into();
+    let config: Config = args.clone().into();
 
     let result = match args.action {
         Action::Init {
@@ -134,7 +134,7 @@ fn main() -> ExitCode {
             plain,
             macro_only: _,
             udl,
-        } => init::run(crate_name, config, vcs, lib_type, plain, !udl),
+        } => init::run(&crate_name, &config, vcs, lib_type, plain, !udl),
 
         Action::Package {
             package,
@@ -151,15 +151,15 @@ fn main() -> ExitCode {
             no_default_features,
         } => package::run(
             package,
-            platforms,
+            &platforms,
             target.as_deref(),
             package_name,
-            xcframework_name,
+            &xcframework_name,
             suppress_warnings,
-            config,
+            &config,
             if release { Mode::Release } else { Mode::Debug },
-            lib_type,
-            FeatureOptions {
+            &lib_type,
+            &FeatureOptions {
                 features,
                 all_features,
                 no_default_features,

@@ -47,6 +47,6 @@ where
 {
     match remove_dir_all(&dir) {
         Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e.into()),
-        _ => create_dir(&dir).map_err(|e| e.into()),
+        _ => create_dir(&dir).map_err(Into::into),
     }
 }

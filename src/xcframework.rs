@@ -17,7 +17,7 @@ pub fn search_subframework_paths(output_dir: &Path) -> Result<Vec<PathBuf>> {
             ))?
             .contains(".xcframework")
         {
-            xcf_path = Some(sub_dir)
+            xcf_path = Some(sub_dir);
         }
     }
     let mut subframework_paths = Vec::<PathBuf>::new();
@@ -31,7 +31,8 @@ pub fn search_subframework_paths(output_dir: &Path) -> Result<Vec<PathBuf>> {
         }
     } else {
         return Err(Error::new(format!(
-            "failed to find .xcframework in {output_dir:?}"
+            "failed to find .xcframework in {}",
+            output_dir.display()
         )));
     }
     Ok(subframework_paths)
@@ -45,19 +46,26 @@ pub fn patch_subframework(
     let mut headers = sf_dir.to_owned();
     headers.push("headers");
     remove_dir_all(&headers)
-        .with_context(|| format!("Failed to remove unpatched directory {headers:?}"))?;
+        .with_context(|| format!("Failed to remove unpatched directory {}", headers.display()))?;
     let mut generated_headers = generated_dir.to_owned();
     generated_headers.push("headers");
 
     let mut patched_headers = sf_dir.to_owned();
     patched_headers.push("headers");
     patched_headers.push(xcframework_name);
-    std::fs::create_dir_all(&patched_headers)
-        .with_context(|| format!("Failed to create empty patched directory {patched_headers:?}"))?;
+    std::fs::create_dir_all(&patched_headers).with_context(|| {
+        format!(
+            "Failed to create empty patched directory {}",
+            patched_headers.display()
+        )
+    })?;
 
     let mut gen_header_files = Vec::<PathBuf>::new();
     for file in std::fs::read_dir(&generated_headers).with_context(|| {
-        format!("Failed to read from the generated header directory {patched_headers:?}")
+        format!(
+            "Failed to read from the generated header directory {}",
+            patched_headers.display()
+        )
     })? {
         let file = file?;
         gen_header_files.push(file.path());
@@ -70,7 +78,11 @@ pub fn patch_subframework(
             .ok_or(anyhow!("Expected source filename when copying"))?;
         patched_headers.push(filename);
         std::fs::copy(&path, &patched_headers).with_context(|| {
-            format!("Failed to copy header file from {path:?} to {patched_headers:?}")
+            format!(
+                "Failed to copy header file from {} to {}",
+                path.display(),
+                patched_headers.display()
+            )
         })?;
         let _copied_file = patched_headers.pop();
     }
@@ -87,7 +99,7 @@ pub fn patch_xcframework(
         search_subframework_paths(output_dir).context("Failed to get subframework components")?;
     for subframework in subframeworks {
         patch_subframework(&subframework, generated_dir, xcframework_name)
-            .with_context(|| format!("Failed to patch {subframework:?}"))?;
+            .with_context(|| format!("Failed to patch {}", subframework.display()))?;
     }
 
     Ok(())
@@ -138,11 +150,11 @@ pub fn create_xcframework(
         .stderr(Stdio::piped())
         .output()?;
 
-    if !output.status.success() {
-        Err(output.stderr.into())
-    } else {
+    if output.status.success() {
         patch_xcframework(output_dir, generated_dir, xcframework_name)
             .context("Failed to patch the XCFramework")?;
         Ok(())
+    } else {
+        Err(output.stderr.into())
     }
 }

@@ -21,12 +21,12 @@ pub fn create_swiftpackage(
     };
 
     write(
-        format!("{}/Package.swift", package_name),
+        format!("{package_name}/Package.swift"),
         package_manifest.render().unwrap(),
     )
     .map_err(|e| format!("Could not write Package.swift: \n {e}"))?;
 
-    create_dir_all(format!("{}/Sources/{}", package_name, package_name))
+    create_dir_all(format!("{package_name}/Sources/{package_name}"))
         .map_err(|e| format!("Could not create module sources directory: \n {e}"))?;
 
     for swift_file in glob("./generated/sources/*.swift")
@@ -42,7 +42,7 @@ pub fn create_swiftpackage(
             .to_string();
         copy(
             swift_file,
-            format!("{}/Sources/{}/{}", package_name, package_name, file_name),
+            format!("{package_name}/Sources/{package_name}/{file_name}"),
         )
         .map_err(|e| format!("Could not copy generated swift source files: \n {e}"))?;
     }

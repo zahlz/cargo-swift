@@ -13,6 +13,7 @@ pub enum LibType {
 
 impl LibType {
     /// The identifier used in the crate-type field in Cargo.toml
+    #[must_use]
     pub fn identifier(&self) -> &str {
         match self {
             LibType::Static => "staticlib",
@@ -20,6 +21,7 @@ impl LibType {
         }
     }
 
+    #[must_use]
     pub fn file_extension(&self) -> &str {
         match self {
             LibType::Static => "a",

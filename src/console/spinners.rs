@@ -76,13 +76,13 @@ impl Ticking for Option<MainSpinner> {
 
     fn finish(&self) {
         if let Some(this) = self {
-            this.finish()
+            this.finish();
         }
     }
 
     fn fail(&self) {
         if let Some(this) = self {
-            this.fail()
+            this.fail();
         }
     }
 }
@@ -145,13 +145,13 @@ impl Ticking for Option<CommandSpinner> {
 
     fn finish(&self) {
         if let Some(this) = self {
-            this.finish()
+            this.finish();
         }
     }
 
     fn fail(&self) {
         if let Some(this) = self {
-            this.fail()
+            this.fail();
         }
     }
 }

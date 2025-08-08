@@ -12,13 +12,19 @@ use execute::{command, Execute};
 use indicatif::MultiProgress;
 
 use crate::bindings::generate_bindings;
-use crate::console::*;
-use crate::console::{run_step, run_step_with_commands};
+use crate::console::{
+    prompt_theme, run_step, run_step_with_commands, CommandSpinner, Error, Errors, MainSpinner,
+    OptionalMultiProgress, Ticking,
+};
 use crate::lib_type::LibType;
 use crate::metadata::{metadata, MetadataExt};
 use crate::swiftpackage::{create_swiftpackage, recreate_output_dir};
-use crate::targets::*;
 use crate::xcframework::create_xcframework;
+use crate::{
+    console::{info, warning},
+    Config, Result,
+};
+use crate::{library_file_name, ApplePlatform, Mode, Target, TargetInfo};
 
 #[derive(ValueEnum, Debug, Clone)]
 #[value()]
@@ -55,18 +61,18 @@ pub struct FeatureOptions {
     pub no_default_features: bool,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::missing_errors_doc)]
 pub fn run(
     package: Option<String>,
-    platforms: Option<Vec<Platform>>,
+    platforms: &Option<Vec<Platform>>,
     build_target: Option<&str>,
     package_name: Option<String>,
-    xcframework_name: String,
+    xcframework_name: &str,
     disable_warnings: bool,
-    config: Config,
+    config: &Config,
     mode: Mode,
-    lib_type_arg: LibTypeArg,
-    features: FeatureOptions,
+    lib_type_arg: &LibTypeArg,
+    features: &FeatureOptions,
     skip_toolchains_check: bool,
 ) -> Result<()> {
     let md = metadata();
@@ -89,7 +95,7 @@ pub fn run(
             package_name,
             xcframework_name,
             disable_warnings,
-            &config,
+            config,
             mode,
             lib_type_arg,
             features,
@@ -101,23 +107,23 @@ pub fn run(
 
     crates
         .iter()
-        .map(|current_crate| {
+        .filter_map(|current_crate| {
             info!(&config, "Packaging crate {}", current_crate.name);
             run_for_crate(
                 current_crate,
                 platforms.clone(),
                 build_target,
                 None,
-                xcframework_name.clone(),
+                xcframework_name,
                 disable_warnings,
-                &config,
+                config,
                 mode,
-                lib_type_arg.clone(),
-                features.clone(),
+                lib_type_arg,
+                features,
                 skip_toolchains_check,
             )
+            .err()
         })
-        .filter_map(|result| result.err())
         .collect::<Errors>()
         .into()
 }
@@ -128,12 +134,12 @@ fn run_for_crate(
     platforms: Option<Vec<Platform>>,
     build_target: Option<&str>,
     package_name: Option<String>,
-    xcframework_name: String,
+    xcframework_name: &str,
     disable_warnings: bool,
     config: &Config,
     mode: Mode,
-    lib_type_arg: LibTypeArg,
-    features: FeatureOptions,
+    lib_type_arg: &LibTypeArg,
+    features: &FeatureOptions,
     skip_toolchains_check: bool,
 ) -> Result<()> {
     let lib = current_crate
@@ -167,7 +173,7 @@ fn run_for_crate(
 
     let mut targets: Vec<_> = platforms
         .into_iter()
-        .flat_map(|p| p.into_apple_platforms())
+        .flat_map(Platform::into_apple_platforms)
         .map(|p| p.target())
         .collect();
 
@@ -193,8 +199,7 @@ fn run_for_crate(
         });
         if targets.is_empty() {
             return Err(Error::from(format!(
-                "No matching build target for {}",
-                build_target
+                "No matching build target for {build_target}",
             )));
         }
     }
@@ -226,7 +231,7 @@ fn run_for_crate(
             mode,
             lib_type,
             config,
-            &features,
+            features,
             Some(&current_crate.name),
         )?;
     }
@@ -238,12 +243,12 @@ fn run_for_crate(
         &targets,
         &crate_name,
         &package_name,
-        &xcframework_name,
+        xcframework_name,
         mode,
         lib_type,
         config,
     )?;
-    create_package_with_output(&package_name, &xcframework_name, disable_warnings, config)?;
+    create_package_with_output(&package_name, xcframework_name, disable_warnings, config)?;
 
     Ok(())
 }
@@ -275,7 +280,7 @@ impl Platform {
         }
     }
 
-    fn display_name(&self) -> String {
+    fn display_name(self) -> String {
         let name = match self {
             Platform::Macos => "macOS",
             Platform::Ios => "iOS",
@@ -295,7 +300,7 @@ impl Platform {
         )
     }
 
-    fn is_experimental(&self) -> bool {
+    fn is_experimental(self) -> bool {
         match self {
             Platform::Macos | Platform::Ios => false,
             Platform::Tvos | Platform::Watchos | Platform::Visionos | Platform::Maccatalyst => true,
@@ -315,7 +320,7 @@ impl Platform {
 
 fn prompt_platforms(accept_all: bool) -> Vec<Platform> {
     let platforms = Platform::all();
-    let items = platforms.map(|p| p.display_name());
+    let items = platforms.map(Platform::display_name);
 
     if accept_all {
         return platforms
@@ -356,7 +361,7 @@ fn check_installed_toolchains(targets: &[Target]) -> Vec<&'static str> {
     targets
         .iter()
         .filter(|t| !t.platform().is_tier_3())
-        .flat_map(|t| t.architectures())
+        .flat_map(Target::architectures)
         .filter(|arch| {
             !installed
                 .iter()
@@ -399,7 +404,7 @@ fn prompt_toolchain_installation(toolchains: &[&str]) -> bool {
     println!("The following toolchains are not installed:");
 
     for toolchain in toolchains {
-        println!("\t{toolchain}")
+        println!("\t{toolchain}");
     }
 
     let theme = prompt_theme();
@@ -418,7 +423,7 @@ fn prompt_toolchain_installation(toolchains: &[&str]) -> bool {
 fn install_toolchains(toolchains: &[&str], silent: bool) -> Result<()> {
     if toolchains.is_empty() {
         return Ok(());
-    };
+    }
 
     let multi = silent.not().then(MultiProgress::new);
     let spinner = silent
@@ -522,7 +527,7 @@ fn pick_lib_type(
     if let Some(suggested) = suggested {
         // TODO: Show part of Cargo.toml here to help user fix this
         warning!(config,
-            "No matching library type for --lib-type {suggested} found in Cargo.toml.\n  Building as {choosen} instead...")
+            "No matching library type for --lib-type {suggested} found in Cargo.toml.\n  Building as {choosen} instead...");
     }
     Ok(choosen)
 }
@@ -565,7 +570,7 @@ fn build_with_output(
 
     run_step_with_commands(
         config,
-        format!("Building target {}", target.display_name()),
+        &format!("Building target {}", target.display_name()),
         &mut commands,
     )?;
 
@@ -608,7 +613,7 @@ fn create_package_with_output(
 ) -> Result<()> {
     run_step(
         config,
-        format!("Creating Swift Package '{package_name}'..."),
+        &format!("Creating Swift Package '{package_name}'..."),
         || create_swiftpackage(package_name, xcframework_name, disable_warnings),
     )?;
 

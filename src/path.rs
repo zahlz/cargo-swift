@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use camino::{FromPathBufError, Utf8Path, Utf8PathBuf};
 
 use crate::Result;
@@ -19,7 +17,7 @@ impl PathExt for Utf8Path {
             )
         })?;
         let common = self.find_common_path(&cwd);
-        let remaining = cwd.strip_prefix(common.deref()).unwrap();
+        let remaining = cwd.strip_prefix(&*common).unwrap();
         let prefix = remaining
             .components()
             .map(|_| "..")

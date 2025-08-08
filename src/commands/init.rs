@@ -10,7 +10,7 @@ use crate::console::{run_step, Config, Result};
 use crate::lib_type::LibType;
 use crate::templating;
 
-#[derive(ValueEnum, Debug, Clone)]
+#[derive(ValueEnum, Debug, Clone, Copy)]
 #[value()]
 pub enum Vcs {
     Git,
@@ -26,22 +26,23 @@ impl Display for Vcs {
     }
 }
 
+#[allow(clippy::missing_errors_doc)]
 pub fn run(
-    crate_name: String,
-    config: Config,
+    crate_name: &str,
+    config: &Config,
     vcs: Vcs,
     lib_type: LibType,
     plain: bool,
     macro_only: bool,
 ) -> Result<()> {
-    run_step(&config, "Creating Rust library package...", || {
-        create_project(&crate_name, lib_type, plain, macro_only)
+    run_step(config, "Creating Rust library package...", || {
+        create_project(crate_name, lib_type, plain, macro_only)
     })?;
 
     match vcs {
-        Vcs::Git => init_git_repository(&crate_name, &config)?,
+        Vcs::Git => init_git_repository(crate_name, config)?,
         Vcs::None => (),
-    };
+    }
 
     Ok(())
 }
@@ -62,7 +63,9 @@ fn create_project(
         macro_only,
     };
     let lib_rs_content = templating::LibRs { plain, macro_only };
-    let (udl_content, build_rs_content) = if !macro_only {
+    let (udl_content, build_rs_content) = if macro_only {
+        (None, None)
+    } else {
         (
             Some(templating::LibUdl {
                 namespace: &namespace,
@@ -70,14 +73,12 @@ fn create_project(
             }),
             Some(templating::BuildRs {}),
         )
-    } else {
-        (None, None)
     };
 
     write_project_files(
-        cargo_toml_content,
+        &cargo_toml_content,
         build_rs_content,
-        lib_rs_content,
+        &lib_rs_content,
         udl_content,
         crate_name,
     )?;
@@ -86,38 +87,32 @@ fn create_project(
 }
 
 fn write_project_files(
-    cargo_toml: templating::CargoToml,
+    cargo_toml: &templating::CargoToml,
     build_rs: Option<templating::BuildRs>,
-    lib_rs: templating::LibRs,
+    lib_rs: &templating::LibRs,
     lib_udl: Option<templating::LibUdl>,
     crate_name: &str,
 ) -> Result<()> {
     create_dir(crate_name).map_err(|_| "Could not create directory for crate!")?;
 
     write(
-        format!("{}/Cargo.toml", crate_name),
+        format!("{crate_name}/Cargo.toml"),
         cargo_toml.render().unwrap(),
     )
     .map_err(|_| "Could not write Cargo.toml!")?;
 
     if let Some(build_rs) = build_rs {
-        write(
-            format!("{}/build.rs", crate_name),
-            build_rs.render().unwrap(),
-        )
-        .expect("Could not write build.rs!");
+        write(format!("{crate_name}/build.rs"), build_rs.render().unwrap())
+            .expect("Could not write build.rs!");
     }
 
-    create_dir(format!("{}/src", crate_name)).expect("Could not create src/ directory!");
-    write(
-        format!("{}/src/lib.rs", crate_name),
-        lib_rs.render().unwrap(),
-    )
-    .map_err(|_| "Could not write src/lib.rs!")?;
+    create_dir(format!("{crate_name}/src")).expect("Could not create src/ directory!");
+    write(format!("{crate_name}/src/lib.rs"), lib_rs.render().unwrap())
+        .map_err(|_| "Could not write src/lib.rs!")?;
 
     if let Some(lib_udl) = lib_udl {
         write(
-            format!("{}/src/lib.udl", crate_name),
+            format!("{crate_name}/src/lib.udl"),
             lib_udl.render().unwrap(),
         )
         .map_err(|_| "Could not write src/lib.udl!")?;
@@ -128,7 +123,7 @@ fn write_project_files(
 
 fn init_git_repository(crate_name: &str, config: &Config) -> Result<()> {
     let gitignore_content = include_str!("../../templates/template.gitignore");
-    write(format!("{}/.gitignore", crate_name), gitignore_content)
+    write(format!("{crate_name}/.gitignore"), gitignore_content)
         .map_err(|_| "Could not write .gitignore!")?;
 
     let git_status_output = command!("git status")

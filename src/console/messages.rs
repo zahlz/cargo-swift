@@ -5,19 +5,20 @@ use console::{style, Style};
 /// Prints a formatted warning message to the console
 pub fn print_warning(msg: &str, config: &Config) {
     let style = Style::new().bold().yellow();
-    print_msg("!", msg, style, config)
+    print_msg("!", msg, &style, config);
 }
 
 /// Prints a formatted info message to the console
 pub fn print_info(msg: &str, config: &Config) {
     let style = Style::new().bold().cyan();
-    print_msg("ℹ", msg, style, config)
+    print_msg("ℹ", msg, &style, config);
 }
 
+#[allow(clippy::inline_always)]
 #[inline(always)]
-fn print_msg(tag: &str, msg: &str, s: Style, config: &Config) {
+fn print_msg(tag: &str, msg: &str, s: &Style, config: &Config) {
     if !config.silent {
-        println!("{} {}", s.apply_to(tag), style(msg))
+        println!("{} {}", s.apply_to(tag), style(msg));
     }
 }
 
