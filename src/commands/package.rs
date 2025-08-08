@@ -8,23 +8,23 @@ use cargo_metadata::{Package, TargetKind};
 use clap::ValueEnum;
 use convert_case::{Case, Casing};
 use dialoguer::{Input, MultiSelect};
-use execute::{command, Execute};
+use execute::{Execute, command};
 use indicatif::MultiProgress;
 
 use crate::bindings::generate_bindings;
 use crate::console::{
-    prompt_theme, run_step, run_step_with_commands, CommandSpinner, Error, Errors, MainSpinner,
-    OptionalMultiProgress, Ticking,
+    CommandSpinner, Error, Errors, MainSpinner, OptionalMultiProgress, Ticking, prompt_theme,
+    run_step, run_step_with_commands,
 };
 use crate::lib_type::LibType;
-use crate::metadata::{metadata, MetadataExt};
+use crate::metadata::{MetadataExt, metadata};
 use crate::swiftpackage::{create_swiftpackage, recreate_output_dir};
 use crate::xcframework::create_xcframework;
+use crate::{ApplePlatform, Mode, Target, TargetInfo, library_file_name};
 use crate::{
-    console::{info, warning},
     Config, Result,
+    console::{info, warning},
 };
-use crate::{library_file_name, ApplePlatform, Mode, Target, TargetInfo};
 
 #[derive(ValueEnum, Debug, Clone)]
 #[value()]
@@ -82,9 +82,10 @@ pub fn run(
             .filter(|p| p.name == package)
             .collect::<Vec<&Package>>()
     } else {
-        vec![md
-            .current_crate()
-            .ok_or("Current directory is not part of a crate!")?]
+        vec![
+            md.current_crate()
+                .ok_or("Current directory is not part of a crate!")?,
+        ]
     };
 
     if crates.len() == 1 {
@@ -526,8 +527,10 @@ fn pick_lib_type(
 
     if let Some(suggested) = suggested {
         // TODO: Show part of Cargo.toml here to help user fix this
-        warning!(config,
-            "No matching library type for --lib-type {suggested} found in Cargo.toml.\n  Building as {choosen} instead...");
+        warning!(
+            config,
+            "No matching library type for --lib-type {suggested} found in Cargo.toml.\n  Building as {choosen} instead..."
+        );
     }
     Ok(choosen)
 }

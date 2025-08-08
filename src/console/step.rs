@@ -7,10 +7,9 @@ use super::{
     CommandInfo, CommandSpinner, Config, MainSpinner, OptionalMultiProgress, Result, Ticking,
 };
 
-pub fn run_step<T, E, S>(config: &Config, title: S, execute: E) -> Result<T>
+pub fn run_step<T, E>(config: &Config, title: &str, execute: E) -> Result<T>
 where
     E: FnOnce() -> Result<T>,
-    S: ToString,
 {
     let spinner = config
         .silent
@@ -29,10 +28,11 @@ where
     result
 }
 
-pub fn run_step_with_commands<S>(config: &Config, title: S, commands: &mut [Command]) -> Result<()>
-where
-    S: ToString,
-{
+pub fn run_step_with_commands(
+    config: &Config,
+    title: &str,
+    commands: &mut [Command],
+) -> Result<()> {
     let multi = config.silent.not().then(MultiProgress::new);
     let spinner = config
         .silent
