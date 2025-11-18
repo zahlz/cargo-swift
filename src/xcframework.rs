@@ -1,40 +1,37 @@
-use crate::console::Error;
-use crate::lib_type::LibType;
-use crate::{Mode, Result, Target};
-use anyhow::{anyhow, Context};
-use std::fs::{remove_dir_all, DirEntry};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use crate::{Mode, Result, Target, console::Error, lib_type::LibType};
+use anyhow::{Context, anyhow};
+use std::{
+    fs::{read_dir, remove_dir_all},
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
 
 pub fn search_subframework_paths(output_dir: &Path) -> Result<Vec<PathBuf>> {
-    let mut xcf_path: Option<DirEntry> = None;
-    for sub_dir in std::fs::read_dir(output_dir)?.flatten() {
-        if sub_dir
-            .file_name()
+    let xcf_path = read_dir(output_dir)?.flatten().find(|dir| {
+        dir.file_name()
             .to_str()
             .ok_or(anyhow!(
                 "The directory that is being checked if it is an XCFramework has an invalid name!"
-            ))?
-            .contains(".xcframework")
-        {
-            xcf_path = Some(sub_dir);
-        }
-    }
-    let mut subframework_paths = Vec::<PathBuf>::new();
-    if let Some(path) = xcf_path {
-        for subdir in std::fs::read_dir(path.path())? {
-            let subdir = subdir?;
-            let subdir_path = subdir.path();
-            if subdir.file_type()?.is_dir() {
-                subframework_paths.push(subdir_path);
-            }
-        }
+            ))
+            .is_ok_and(|dir| dir.contains(".xcframework"))
+    });
+
+    let subframework_paths = if let Some(path) = xcf_path {
+        read_dir(path.path())?
+            .filter_map(|subdir| {
+                if subdir.as_ref().ok()?.file_type().ok()?.is_dir() {
+                    Some(subdir.ok()?.path())
+                } else {
+                    None
+                }
+            })
+            .collect()
     } else {
         return Err(Error::new(format!(
             "failed to find .xcframework in {}",
             output_dir.display()
         )));
-    }
+    };
     Ok(subframework_paths)
 }
 
