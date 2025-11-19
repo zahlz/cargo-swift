@@ -1,10 +1,10 @@
 use std::{fmt::Display, process::Command};
 
 use execute::command;
-use nonempty::{nonempty, NonEmpty};
+use nonempty::{NonEmpty, nonempty};
 
 use crate::lib_type::LibType;
-use crate::metadata::{metadata, MetadataExt};
+use crate::metadata::{MetadataExt, metadata};
 use crate::package::FeatureOptions;
 
 pub trait TargetInfo {
@@ -222,8 +222,8 @@ pub enum ApplePlatform {
 
 impl TargetInfo for ApplePlatform {
     fn target(&self) -> Target {
+        use ApplePlatform::*;
         match self {
-            use ApplePlatform::*;
             IOS => Target::Single {
                 architecture: "aarch64-apple-ios",
                 display_name: "iOS",
